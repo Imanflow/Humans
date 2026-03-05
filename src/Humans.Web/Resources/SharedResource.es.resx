@@ -100,6 +100,7 @@
   <!-- ======================== -->
   <data name="Home_Title" xml:space="preserve"><value>Inicio</value></data>
   <data name="Home_Tagline" xml:space="preserve"><value>Portal de miembros de Nobodies Collective</value></data>
+  <data name="Home_CTA" xml:space="preserve"><value>&#xBF;Eres nuevo/a? Inicia sesi&#xF3;n con Google para empezar.</value></data>
   <data name="Home_WhyTitle" xml:space="preserve"><value>&#xBF;Por qu&#xE9; necesitamos esto?</value></data>
   <data name="Home_WhyDescription" xml:space="preserve"><value>Como asociaci&#xF3;n registrada en Espa&#xF1;a, Nobodies Collective tiene obligaciones legales. Antes de que cualquier persona pueda acceder a los recursos compartidos, necesitamos confirmar su aceptaci&#xF3;n de nuestras pol&#xED;ticas. Este sistema se encarga de ello de forma sencilla y mantiene todo actualizado.</value></data>
   <data name="Home_ComplianceTitle" xml:space="preserve"><value>Cumplimiento legal</value></data>

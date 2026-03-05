@@ -100,6 +100,7 @@
   <!-- ======================== -->
   <data name="Home_Title" xml:space="preserve"><value>Home</value></data>
   <data name="Home_Tagline" xml:space="preserve"><value>Portale membri di Nobodies Collective</value></data>
+  <data name="Home_CTA" xml:space="preserve"><value>Sei nuovo/a? Accedi con Google per iniziare.</value></data>
   <data name="Home_WhyTitle" xml:space="preserve"><value>Perché ne abbiamo bisogno?</value></data>
   <data name="Home_WhyDescription" xml:space="preserve"><value>In quanto associazione registrata in Spagna, Nobodies Collective ha obblighi legali. Prima che qualcuno possa accedere alle risorse condivise, è necessario confermare l'accettazione delle nostre politiche. Questo sistema gestisce tutto in modo semplice e mantiene tutto aggiornato.</value></data>
   <data name="Home_ComplianceTitle" xml:space="preserve"><value>Conformità legale</value></data>

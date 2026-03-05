@@ -9,9 +9,6 @@ Last synced: 2026-03-05
 
 ### Priority 2: Small-Medium Enhancements
 
-#### #72: Add clear CTA to homepage (before login)
-The pre-login homepage needs a call-to-action like "New here? Sign in with Google to apply" for when the app URL is shared externally.
-
 #### #80: Enforce E.164 format (+country code) for phone number fields
 Phone and WhatsApp contact fields and emergency contact phone must start with `+` and country code. Client + server validation, placeholder hints, prompt existing members to update non-compliant numbers.
 
@@ -137,6 +134,9 @@ Two OpenTelemetry packages pinned to beta versions. Check for stable releases or
 ---
 
 ## Completed
+
+### #72: Add clear CTA to homepage DONE
+Added "New here? Sign in with Google to get started." text above the sign-in button on the pre-login homepage. Localized in all 5 languages. Committed `534554a`.
 
 ### #87 + #88 + #81: Profile bug fixes and UX improvements DONE
 Fixed broken "My Data" and "Edit Profile" links on `/Human/{id}` page (missing `asp-controller="Profile"`). New contact fields now require explicit visibility selection instead of defaulting to "All active members". Added client-side warning on profile edit when burner name matches legal name, localized in all 5 languages. Committed `290ea9b`.
