@@ -60,7 +60,7 @@
                         <label asp-for="BurnerName" class="form-label"></label>
                         <input asp-for="BurnerName" class="form-control" placeholder="@Localizer["ProfileEdit_BurnerNamePlaceholder"].Value" />
                         <span asp-validation-for="BurnerName" class="text-danger"></span>
-                        <div id="burnerNameWarning" class="alert alert-warning mt-2 d-none" role="alert">
+                        <div id="burnerNameWarning" class="alert alert-danger mt-2 d-none" role="alert">
                             <i class="fa-solid fa-triangle-exclamation me-1"></i>
                             @Localizer["ProfileEdit_BurnerNameMatchesLegalName"]
                         </div>
@@ -828,9 +828,8 @@
                 if (!burner) { burnerWarning.classList.add('d-none'); return; }
                 const first = (firstNameInput?.value || '').trim().toLowerCase();
                 const last = (lastNameInput?.value || '').trim().toLowerCase();
-                const legalParts = [first, last].filter(Boolean);
-                const matches = legalParts.some(part => part && burner.includes(part))
-                    || (first && last && `${first} ${last}`.includes(burner));
+                const fullLegal = [first, last].filter(Boolean).join(' ');
+                const matches = fullLegal.length > 0 && burner === fullLegal;
                 burnerWarning.classList.toggle('d-none', !matches);
             }
 
