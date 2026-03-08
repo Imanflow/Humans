@@ -246,13 +246,20 @@ public class ProfileServiceTests : IDisposable
         var teamId = Guid.NewGuid();
         _dbContext.Teams.Add(new Team
         {
-            Id = teamId, Name = "Test", Slug = "test", IsActive = true,
-            CreatedAt = _clock.GetCurrentInstant(), UpdatedAt = _clock.GetCurrentInstant()
+            Id = teamId,
+            Name = "Test",
+            Slug = "test",
+            IsActive = true,
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant()
         });
         _dbContext.TeamMembers.Add(new TeamMember
         {
-            Id = Guid.NewGuid(), TeamId = teamId, UserId = userId,
-            Role = TeamMemberRole.Member, JoinedAt = _clock.GetCurrentInstant()
+            Id = Guid.NewGuid(),
+            TeamId = teamId,
+            UserId = userId,
+            Role = TeamMemberRole.Member,
+            JoinedAt = _clock.GetCurrentInstant()
         });
         await _dbContext.SaveChangesAsync();
 
@@ -269,9 +276,12 @@ public class ProfileServiceTests : IDisposable
         await SeedUserAsync(userId);
         _dbContext.RoleAssignments.Add(new RoleAssignment
         {
-            Id = Guid.NewGuid(), UserId = userId, RoleName = "Board",
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            RoleName = "Board",
             ValidFrom = _clock.GetCurrentInstant() - Duration.FromDays(10),
-            CreatedAt = _clock.GetCurrentInstant(), CreatedByUserId = Guid.NewGuid()
+            CreatedAt = _clock.GetCurrentInstant(),
+            CreatedByUserId = Guid.NewGuid()
         });
         await _dbContext.SaveChangesAsync();
 
@@ -451,14 +461,20 @@ public class ProfileServiceTests : IDisposable
 
         var olderApp = new MemberApplication
         {
-            Id = Guid.NewGuid(), UserId = userId, MembershipTier = MembershipTier.Colaborador,
-            Motivation = "first", SubmittedAt = _clock.GetCurrentInstant() - Duration.FromDays(5),
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            MembershipTier = MembershipTier.Colaborador,
+            Motivation = "first",
+            SubmittedAt = _clock.GetCurrentInstant() - Duration.FromDays(5),
             UpdatedAt = _clock.GetCurrentInstant() - Duration.FromDays(5)
         };
         var newerApp = new MemberApplication
         {
-            Id = Guid.NewGuid(), UserId = userId, MembershipTier = MembershipTier.Asociado,
-            Motivation = "second", SubmittedAt = _clock.GetCurrentInstant(),
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            MembershipTier = MembershipTier.Asociado,
+            Motivation = "second",
+            SubmittedAt = _clock.GetCurrentInstant(),
             UpdatedAt = _clock.GetCurrentInstant()
         };
         await _dbContext.Applications.AddRangeAsync(olderApp, newerApp);
@@ -497,9 +513,12 @@ public class ProfileServiceTests : IDisposable
         await SeedUserWithProfileAsync(userId, isApproved: false);
         _dbContext.Applications.Add(new MemberApplication
         {
-            Id = Guid.NewGuid(), UserId = userId, MembershipTier = MembershipTier.Colaborador,
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            MembershipTier = MembershipTier.Colaborador,
             Motivation = "test",
-            SubmittedAt = _clock.GetCurrentInstant(), UpdatedAt = _clock.GetCurrentInstant()
+            SubmittedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant()
         });
         await _dbContext.SaveChangesAsync();
 
@@ -517,9 +536,12 @@ public class ProfileServiceTests : IDisposable
         await SeedUserWithProfileAsync(userId, isApproved: true);
         var app = new MemberApplication
         {
-            Id = Guid.NewGuid(), UserId = userId, MembershipTier = MembershipTier.Colaborador,
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            MembershipTier = MembershipTier.Colaborador,
             Motivation = "test",
-            SubmittedAt = _clock.GetCurrentInstant(), UpdatedAt = _clock.GetCurrentInstant()
+            SubmittedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant()
         };
         app.Approve(userId, null, _clock);
         _dbContext.Applications.Add(app);
@@ -801,21 +823,31 @@ public class ProfileServiceTests : IDisposable
 
         _dbContext.Applications.Add(new MemberApplication
         {
-            Id = Guid.NewGuid(), UserId = userId, MembershipTier = MembershipTier.Colaborador,
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            MembershipTier = MembershipTier.Colaborador,
             Motivation = "test",
-            SubmittedAt = _clock.GetCurrentInstant(), UpdatedAt = _clock.GetCurrentInstant()
+            SubmittedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant()
         });
         _dbContext.RoleAssignments.Add(new RoleAssignment
         {
-            Id = Guid.NewGuid(), UserId = userId, RoleName = "Board",
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            RoleName = "Board",
             ValidFrom = _clock.GetCurrentInstant() - Duration.FromDays(10),
-            CreatedAt = _clock.GetCurrentInstant(), CreatedByUserId = userId
+            CreatedAt = _clock.GetCurrentInstant(),
+            CreatedByUserId = userId
         });
         _dbContext.AuditLogEntries.Add(new AuditLogEntry
         {
-            Id = Guid.NewGuid(), Action = AuditAction.MembershipsRevokedOnDeletionRequest,
-            EntityType = "User", EntityId = userId, Description = "Test entry",
-            OccurredAt = _clock.GetCurrentInstant(), ActorName = "System"
+            Id = Guid.NewGuid(),
+            Action = AuditAction.MembershipsRevokedOnDeletionRequest,
+            EntityType = "User",
+            EntityId = userId,
+            Description = "Test entry",
+            OccurredAt = _clock.GetCurrentInstant(),
+            ActorName = "System"
         });
         await _dbContext.SaveChangesAsync();
 
@@ -847,7 +879,9 @@ public class ProfileServiceTests : IDisposable
         var emailId = Guid.NewGuid();
         _dbContext.UserEmails.Add(new UserEmail
         {
-            Id = emailId, UserId = userId, Email = "test@test.com",
+            Id = emailId,
+            UserId = userId,
+            Email = "test@test.com",
             VerificationSentAt = _clock.GetCurrentInstant() - Duration.FromMinutes(2),
             DisplayOrder = 0
         });
@@ -868,7 +902,9 @@ public class ProfileServiceTests : IDisposable
         var emailId = Guid.NewGuid();
         _dbContext.UserEmails.Add(new UserEmail
         {
-            Id = emailId, UserId = userId, Email = "test@test.com",
+            Id = emailId,
+            UserId = userId,
+            Email = "test@test.com",
             VerificationSentAt = _clock.GetCurrentInstant() - Duration.FromMinutes(6),
             DisplayOrder = 0
         });
@@ -889,7 +925,9 @@ public class ProfileServiceTests : IDisposable
         var emailId = Guid.NewGuid();
         _dbContext.UserEmails.Add(new UserEmail
         {
-            Id = emailId, UserId = userId, Email = "test@test.com",
+            Id = emailId,
+            UserId = userId,
+            Email = "test@test.com",
             VerificationSentAt = null,
             DisplayOrder = 0
         });

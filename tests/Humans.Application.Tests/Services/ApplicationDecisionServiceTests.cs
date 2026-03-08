@@ -343,20 +343,29 @@ public class ApplicationDecisionServiceTests : IDisposable
         var userId = Guid.NewGuid();
         var app1 = new MemberApplication
         {
-            Id = Guid.NewGuid(), UserId = userId, MembershipTier = MembershipTier.Colaborador,
-            Motivation = "M1", SubmittedAt = _clock.GetCurrentInstant() - Duration.FromDays(2),
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            MembershipTier = MembershipTier.Colaborador,
+            Motivation = "M1",
+            SubmittedAt = _clock.GetCurrentInstant() - Duration.FromDays(2),
             UpdatedAt = _clock.GetCurrentInstant()
         };
         var app2 = new MemberApplication
         {
-            Id = Guid.NewGuid(), UserId = userId, MembershipTier = MembershipTier.Asociado,
-            Motivation = "M2", SubmittedAt = _clock.GetCurrentInstant() - Duration.FromDays(1),
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            MembershipTier = MembershipTier.Asociado,
+            Motivation = "M2",
+            SubmittedAt = _clock.GetCurrentInstant() - Duration.FromDays(1),
             UpdatedAt = _clock.GetCurrentInstant()
         };
         var app3 = new MemberApplication
         {
-            Id = Guid.NewGuid(), UserId = userId, MembershipTier = MembershipTier.Colaborador,
-            Motivation = "M3", SubmittedAt = _clock.GetCurrentInstant(),
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            MembershipTier = MembershipTier.Colaborador,
+            Motivation = "M3",
+            SubmittedAt = _clock.GetCurrentInstant(),
             UpdatedAt = _clock.GetCurrentInstant()
         };
         await _dbContext.Applications.AddRangeAsync(app1, app2, app3);
@@ -406,8 +415,10 @@ public class ApplicationDecisionServiceTests : IDisposable
         var reviewerId = Guid.NewGuid();
         _dbContext.Users.Add(new User
         {
-            Id = reviewerId, DisplayName = "Reviewer",
-            UserName = "reviewer@test.com", Email = "reviewer@test.com"
+            Id = reviewerId,
+            DisplayName = "Reviewer",
+            UserName = "reviewer@test.com",
+            Email = "reviewer@test.com"
         });
         await _dbContext.SaveChangesAsync();
 
@@ -543,8 +554,10 @@ public class ApplicationDecisionServiceTests : IDisposable
         var reviewerId = Guid.NewGuid();
         _dbContext.Users.Add(new User
         {
-            Id = reviewerId, DisplayName = "Admin",
-            UserName = "admin@test.com", Email = "admin@test.com"
+            Id = reviewerId,
+            DisplayName = "Admin",
+            UserName = "admin@test.com",
+            Email = "admin@test.com"
         });
         await _dbContext.SaveChangesAsync();
 

@@ -50,7 +50,7 @@ public class ConsentServiceTests : IDisposable
     {
         var userId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
-        SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] ="Spanish text" });
+        SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "Spanish text" });
 
         var result = await _service.SubmitConsentAsync(userId, versionId, true, "192.168.1.1", "TestAgent");
 
@@ -69,7 +69,7 @@ public class ConsentServiceTests : IDisposable
     {
         var userId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
-        SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] ="Spanish text" });
+        SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "Spanish text" });
 
         await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", "Agent");
 
@@ -84,7 +84,7 @@ public class ConsentServiceTests : IDisposable
     {
         var userId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
-        SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] ="text" });
+        SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
         _dbContext.ConsentRecords.Add(new ConsentRecord
         {
             Id = Guid.NewGuid(),
@@ -118,7 +118,7 @@ public class ConsentServiceTests : IDisposable
     {
         var userId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
-        SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] ="text" });
+        SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
         var longAgent = new string('A', 600);
 
         await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", longAgent);
@@ -132,7 +132,7 @@ public class ConsentServiceTests : IDisposable
     {
         var userId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
-        SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] ="text" });
+        SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
 
         await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", "Agent");
 
@@ -144,7 +144,7 @@ public class ConsentServiceTests : IDisposable
     {
         var userId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
-        SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] ="text" });
+        SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
 
         await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", "Agent");
 
@@ -157,7 +157,7 @@ public class ConsentServiceTests : IDisposable
     {
         var userId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
-        SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] ="text" });
+        SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
 
         await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", "Agent");
 
@@ -169,7 +169,7 @@ public class ConsentServiceTests : IDisposable
     {
         var userId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
-        SeedDocumentVersion(versionId, "Privacy Policy", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] ="text" });
+        SeedDocumentVersion(versionId, "Privacy Policy", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
 
         var result = await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", "Agent");
 

@@ -446,16 +446,26 @@ public class OnboardingServiceTests : IDisposable
         _dbContext.Users.Add(new User { Id = olderId, DisplayName = "Older", UserName = $"older-{olderId}@test.com", Email = $"older-{olderId}@test.com" });
         _dbContext.Profiles.Add(new Profile
         {
-            Id = Guid.NewGuid(), UserId = olderId, BurnerName = "Older", FirstName = "Older", LastName = "User",
+            Id = Guid.NewGuid(),
+            UserId = olderId,
+            BurnerName = "Older",
+            FirstName = "Older",
+            LastName = "User",
             ConsentCheckStatus = ConsentCheckStatus.Pending,
-            CreatedAt = now - Duration.FromDays(10), UpdatedAt = now
+            CreatedAt = now - Duration.FromDays(10),
+            UpdatedAt = now
         });
         _dbContext.Users.Add(new User { Id = newerId, DisplayName = "Newer", UserName = $"newer-{newerId}@test.com", Email = $"newer-{newerId}@test.com" });
         _dbContext.Profiles.Add(new Profile
         {
-            Id = Guid.NewGuid(), UserId = newerId, BurnerName = "Newer", FirstName = "Newer", LastName = "User",
+            Id = Guid.NewGuid(),
+            UserId = newerId,
+            BurnerName = "Newer",
+            FirstName = "Newer",
+            LastName = "User",
             ConsentCheckStatus = ConsentCheckStatus.Pending,
-            CreatedAt = now - Duration.FromDays(1), UpdatedAt = now
+            CreatedAt = now - Duration.FromDays(1),
+            UpdatedAt = now
         });
         await _dbContext.SaveChangesAsync();
 
@@ -624,15 +634,23 @@ public class OnboardingServiceTests : IDisposable
         _dbContext.Users.Add(new User { Id = alphaId, DisplayName = "Alpha", UserName = "alpha@test.com", Email = "alpha@test.com" });
         _dbContext.RoleAssignments.Add(new RoleAssignment
         {
-            Id = Guid.NewGuid(), UserId = zoeId, RoleName = RoleNames.Board,
-            ValidFrom = now - Duration.FromDays(30), ValidTo = null,
-            CreatedAt = now, CreatedByUserId = Guid.NewGuid()
+            Id = Guid.NewGuid(),
+            UserId = zoeId,
+            RoleName = RoleNames.Board,
+            ValidFrom = now - Duration.FromDays(30),
+            ValidTo = null,
+            CreatedAt = now,
+            CreatedByUserId = Guid.NewGuid()
         });
         _dbContext.RoleAssignments.Add(new RoleAssignment
         {
-            Id = Guid.NewGuid(), UserId = alphaId, RoleName = RoleNames.Board,
-            ValidFrom = now - Duration.FromDays(30), ValidTo = null,
-            CreatedAt = now, CreatedByUserId = Guid.NewGuid()
+            Id = Guid.NewGuid(),
+            UserId = alphaId,
+            RoleName = RoleNames.Board,
+            ValidFrom = now - Duration.FromDays(30),
+            ValidTo = null,
+            CreatedAt = now,
+            CreatedByUserId = Guid.NewGuid()
         });
         await _dbContext.SaveChangesAsync();
 
@@ -652,9 +670,11 @@ public class OnboardingServiceTests : IDisposable
         await SeedApplicationAsync(appId);
         _dbContext.BoardVotes.Add(new BoardVote
         {
-            Id = Guid.NewGuid(), ApplicationId = appId,
+            Id = Guid.NewGuid(),
+            ApplicationId = appId,
             BoardMemberUserId = Guid.NewGuid(),
-            Vote = VoteChoice.Yay, VotedAt = _clock.GetCurrentInstant()
+            Vote = VoteChoice.Yay,
+            VotedAt = _clock.GetCurrentInstant()
         });
         await _dbContext.SaveChangesAsync();
 
@@ -682,9 +702,11 @@ public class OnboardingServiceTests : IDisposable
         _dbContext.Users.Add(new User { Id = voterId, DisplayName = "Voter", UserName = "voter@test.com", Email = "voter@test.com" });
         _dbContext.BoardVotes.Add(new BoardVote
         {
-            Id = Guid.NewGuid(), ApplicationId = appId,
+            Id = Guid.NewGuid(),
+            ApplicationId = appId,
             BoardMemberUserId = voterId,
-            Vote = VoteChoice.No, VotedAt = _clock.GetCurrentInstant()
+            Vote = VoteChoice.No,
+            VotedAt = _clock.GetCurrentInstant()
         });
         await _dbContext.SaveChangesAsync();
 
@@ -705,9 +727,11 @@ public class OnboardingServiceTests : IDisposable
         await SeedApplicationAsync(appId);
         _dbContext.BoardVotes.Add(new BoardVote
         {
-            Id = Guid.NewGuid(), ApplicationId = appId,
+            Id = Guid.NewGuid(),
+            ApplicationId = appId,
             BoardMemberUserId = Guid.NewGuid(),
-            Vote = VoteChoice.Yay, VotedAt = _clock.GetCurrentInstant()
+            Vote = VoteChoice.Yay,
+            VotedAt = _clock.GetCurrentInstant()
         });
         await _dbContext.SaveChangesAsync();
 
