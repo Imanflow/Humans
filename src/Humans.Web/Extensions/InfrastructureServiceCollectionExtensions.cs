@@ -18,6 +18,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.Configure<TeamResourceManagementSettings>(configuration.GetSection(TeamResourceManagementSettings.SectionName));
 
         services.AddSingleton<HumansMetricsService>();
+        services.AddSingleton<IHumansMetrics>(sp => sp.GetRequiredService<HumansMetricsService>());
 
         services.AddScoped<ITeamService, TeamService>();
         services.AddScoped<IContactFieldService, ContactFieldService>();
@@ -59,6 +60,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IConsentService, ConsentService>();
         services.AddScoped<IProfileService, ProfileService>();
         services.AddScoped<SystemTeamSyncJob>();
+        services.AddScoped<ISystemTeamSync>(sp => sp.GetRequiredService<SystemTeamSyncJob>());
         services.AddScoped<SyncLegalDocumentsJob>();
         services.AddScoped<SendReConsentReminderJob>();
         services.AddScoped<ProcessAccountDeletionsJob>();

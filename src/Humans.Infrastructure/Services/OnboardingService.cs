@@ -8,7 +8,6 @@ using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Jobs;
 using MemberApplication = Humans.Domain.Entities.Application;
 
 namespace Humans.Infrastructure.Services;
@@ -18,9 +17,9 @@ public class OnboardingService : IOnboardingService
     private readonly HumansDbContext _dbContext;
     private readonly IAuditLogService _auditLogService;
     private readonly IEmailService _emailService;
-    private readonly SystemTeamSyncJob _syncJob;
+    private readonly ISystemTeamSync _syncJob;
     private readonly IMembershipCalculator _membershipCalculator;
-    private readonly HumansMetricsService _metrics;
+    private readonly IHumansMetrics _metrics;
     private readonly IClock _clock;
     private readonly IMemoryCache _cache;
     private readonly ILogger<OnboardingService> _logger;
@@ -29,9 +28,9 @@ public class OnboardingService : IOnboardingService
         HumansDbContext dbContext,
         IAuditLogService auditLogService,
         IEmailService emailService,
-        SystemTeamSyncJob syncJob,
+        ISystemTeamSync syncJob,
         IMembershipCalculator membershipCalculator,
-        HumansMetricsService metrics,
+        IHumansMetrics metrics,
         IClock clock,
         IMemoryCache cache,
         ILogger<OnboardingService> logger)

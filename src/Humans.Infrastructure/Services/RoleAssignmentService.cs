@@ -8,7 +8,6 @@ using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Jobs;
 
 namespace Humans.Infrastructure.Services;
 
@@ -19,7 +18,7 @@ public class RoleAssignmentService : IRoleAssignmentService
 {
     private readonly HumansDbContext _dbContext;
     private readonly IAuditLogService _auditLogService;
-    private readonly SystemTeamSyncJob _systemTeamSyncJob;
+    private readonly ISystemTeamSync _systemTeamSyncJob;
     private readonly IClock _clock;
     private readonly IMemoryCache _cache;
     private readonly ILogger<RoleAssignmentService> _logger;
@@ -27,7 +26,7 @@ public class RoleAssignmentService : IRoleAssignmentService
     public RoleAssignmentService(
         HumansDbContext dbContext,
         IAuditLogService auditLogService,
-        SystemTeamSyncJob systemTeamSyncJob,
+        ISystemTeamSync systemTeamSyncJob,
         IClock clock,
         IMemoryCache cache,
         ILogger<RoleAssignmentService> logger)

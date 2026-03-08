@@ -7,7 +7,6 @@ using Humans.Application.Interfaces;
 using Humans.Domain;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Jobs;
 using MemberApplication = Humans.Domain.Entities.Application;
 
 namespace Humans.Infrastructure.Services;
@@ -17,8 +16,8 @@ public class ApplicationDecisionService : IApplicationDecisionService
     private readonly HumansDbContext _dbContext;
     private readonly IAuditLogService _auditLogService;
     private readonly IEmailService _emailService;
-    private readonly SystemTeamSyncJob _syncJob;
-    private readonly HumansMetricsService _metrics;
+    private readonly ISystemTeamSync _syncJob;
+    private readonly IHumansMetrics _metrics;
     private readonly IClock _clock;
     private readonly IMemoryCache _cache;
     private readonly ILogger<ApplicationDecisionService> _logger;
@@ -27,8 +26,8 @@ public class ApplicationDecisionService : IApplicationDecisionService
         HumansDbContext dbContext,
         IAuditLogService auditLogService,
         IEmailService emailService,
-        SystemTeamSyncJob syncJob,
-        HumansMetricsService metrics,
+        ISystemTeamSync syncJob,
+        IHumansMetrics metrics,
         IClock clock,
         IMemoryCache cache,
         ILogger<ApplicationDecisionService> logger)

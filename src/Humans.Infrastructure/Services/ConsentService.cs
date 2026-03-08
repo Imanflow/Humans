@@ -8,7 +8,6 @@ using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Jobs;
 
 namespace Humans.Infrastructure.Services;
 
@@ -17,8 +16,8 @@ public class ConsentService : IConsentService
     private readonly HumansDbContext _dbContext;
     private readonly IOnboardingService _onboardingService;
     private readonly IMembershipCalculator _membershipCalculator;
-    private readonly SystemTeamSyncJob _syncJob;
-    private readonly HumansMetricsService _metrics;
+    private readonly ISystemTeamSync _syncJob;
+    private readonly IHumansMetrics _metrics;
     private readonly IClock _clock;
     private readonly ILogger<ConsentService> _logger;
 
@@ -26,8 +25,8 @@ public class ConsentService : IConsentService
         HumansDbContext dbContext,
         IOnboardingService onboardingService,
         IMembershipCalculator membershipCalculator,
-        SystemTeamSyncJob syncJob,
-        HumansMetricsService metrics,
+        ISystemTeamSync syncJob,
+        IHumansMetrics metrics,
         IClock clock,
         ILogger<ConsentService> logger)
     {
