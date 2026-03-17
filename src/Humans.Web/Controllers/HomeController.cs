@@ -14,23 +14,32 @@ public class HomeController : Controller
     private readonly IMembershipCalculator _membershipCalculator;
     private readonly IProfileService _profileService;
     private readonly IApplicationDecisionService _applicationDecisionService;
+    private readonly IShiftManagementService _shiftMgmt;
+    private readonly IShiftSignupService _shiftSignup;
     private readonly IConfiguration _configuration;
     private readonly IClock _clock;
+    private readonly ILogger<HomeController> _logger;
 
     public HomeController(
         UserManager<User> userManager,
         IMembershipCalculator membershipCalculator,
         IProfileService profileService,
         IApplicationDecisionService applicationDecisionService,
+        IShiftManagementService shiftMgmt,
+        IShiftSignupService shiftSignup,
         IConfiguration configuration,
-        IClock clock)
+        IClock clock,
+        ILogger<HomeController> logger)
     {
         _userManager = userManager;
         _membershipCalculator = membershipCalculator;
         _profileService = profileService;
         _applicationDecisionService = applicationDecisionService;
+        _shiftMgmt = shiftMgmt;
+        _shiftSignup = shiftSignup;
         _configuration = configuration;
         _clock = clock;
+        _logger = logger;
     }
 
     public async Task<IActionResult> Index()
@@ -108,7 +117,111 @@ public class HomeController : Controller
             LastLogin = user.LastLoginAt?.ToDateTimeUtc()
         };
 
+        // Shift cards — fully guarded, failures must never crash the homepage
+        try
+        {
+            var activeEvent = await _shiftMgmt.GetActiveAsync();
+            if (activeEvent != null && activeEvent.IsShiftBrowsingOpen)
+            {
+                var urgentShifts = await _shiftMgmt.GetUrgentShiftsAsync(activeEvent.Id, limit: 3);
+
+                var urgentItems = new List<UrgentShiftItem>();
+                foreach (var u in urgentShifts)
+                {
+                    try
+                    {
+                        urgentItems.Add(new UrgentShiftItem
+                        {
+                            Shift = u.Shift!,
+                            DepartmentName = u.DepartmentName ?? "Unknown",
+                            AbsoluteStart = u.Shift!.GetAbsoluteStart(activeEvent),
+                            RemainingSlots = u.RemainingSlots,
+                            UrgencyScore = u.UrgencyScore
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to build urgent shift item for shift {ShiftId}", u.Shift!.Id);
+                    }
+                }
+
+                var nextShifts = new List<MySignupItem>();
+                var pendingCount = 0;
+                try
+                {
+                    var now = _clock.GetCurrentInstant();
+                    var userSignups = await _shiftSignup.GetByUserAsync(user.Id, activeEvent.Id);
+                    pendingCount = userSignups.Count(s => s.Status == SignupStatus.Pending);
+
+                    foreach (var s in userSignups.Where(s => s.Status == SignupStatus.Confirmed))
+                    {
+                        try
+                        {
+                            var item = new MySignupItem
+                            {
+                                Signup = s,
+                                DepartmentName = s.Shift?.Rota?.Team?.Name ?? "Unknown",
+                                AbsoluteStart = s.Shift!.GetAbsoluteStart(activeEvent),
+                                AbsoluteEnd = s.Shift!.GetAbsoluteEnd(activeEvent)
+                            };
+                            if (item.AbsoluteEnd > now)
+                                nextShifts.Add(item);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Failed to build shift item for signup {SignupId}", s.Id);
+                        }
+                    }
+
+                    nextShifts = nextShifts.OrderBy(i => i.AbsoluteStart).Take(3).ToList();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to load user signups for dashboard");
+                }
+
+                ViewData["ShiftCards"] = new ShiftCardsViewModel
+                {
+                    UrgentShifts = urgentItems,
+                    NextShifts = nextShifts,
+                    PendingCount = pendingCount
+                };
+
+                // Check if user has signups but hasn't filled out shift info
+                if (nextShifts.Count > 0 || pendingCount > 0)
+                {
+                    try
+                    {
+                        var shiftProfile = await _profileService.GetShiftProfileAsync(user.Id, includeMedical: false);
+                        if (shiftProfile == null || IsShiftProfileEmpty(shiftProfile))
+                        {
+                            ViewData["NeedsShiftInfo"] = true;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to check shift profile for dashboard todo");
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load shift cards for dashboard");
+        }
+
         return View("Dashboard", viewModel);
+    }
+
+    private static bool IsShiftProfileEmpty(Domain.Entities.VolunteerEventProfile profile)
+    {
+        return profile.Skills.Count == 0
+            && profile.Quirks.Count == 0
+            && profile.Languages.Count == 0
+            && profile.Allergies.Count == 0
+            && profile.Intolerances.Count == 0
+            && string.IsNullOrEmpty(profile.DietaryPreference)
+            && string.IsNullOrEmpty(profile.MedicalConditions);
     }
 
     public IActionResult Privacy()

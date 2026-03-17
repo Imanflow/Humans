@@ -223,6 +223,30 @@ public class ProcessAccountDeletionsJob
             role.ValidTo = now;
         }
 
+        // Cancel active duty signups
+        var activeSignups = await _dbContext.ShiftSignups
+            .Where(d => d.UserId == user.Id &&
+                        (d.Status == SignupStatus.Confirmed || d.Status == SignupStatus.Pending))
+            .ToListAsync(cancellationToken);
+
+        foreach (var signup in activeSignups)
+        {
+            signup.Cancel(_clock, "Account deletion");
+            await _auditLogService.LogAsync(
+                AuditAction.ShiftSignupCancelled, nameof(ShiftSignup), signup.Id,
+                $"Cancelled signup (account deletion) for shift {signup.ShiftId}",
+                nameof(ProcessAccountDeletionsJob));
+        }
+
+        // Clear iCal token
+        user.ICalToken = null;
+
+        // Delete volunteer event profiles
+        var eventProfiles = await _dbContext.Set<VolunteerEventProfile>()
+            .Where(p => p.UserId == user.Id)
+            .ToListAsync(cancellationToken);
+        _dbContext.Set<VolunteerEventProfile>().RemoveRange(eventProfiles);
+
         // Note: We keep consent records and applications for GDPR audit trail
         // These are already anonymized via the user record anonymization
     }

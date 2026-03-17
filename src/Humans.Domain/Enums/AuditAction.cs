@@ -51,4 +51,10 @@ public enum AuditAction
     CampPrimaryLeadTransferred,
     CampImageUploaded,
     CampImageDeleted,
+    ShiftSignupConfirmed,
+    ShiftSignupRefused,
+    ShiftSignupVoluntold,
+    ShiftSignupBailed,
+    ShiftSignupNoShow,
+    ShiftSignupCancelled,
 }

@@ -36,6 +36,11 @@
 | TicketOrder | Ticket purchase order synced from vendor (one per purchase) |
 | TicketAttendee | Individual ticket holder (issued ticket, multiple per order) |
 | TicketSyncState | Singleton tracking ticket sync operational state |
+| EventSettings | Singleton event config — dates, timezone, EE capacity, caps |
+| Rota | Shift container — belongs to department + event |
+| Shift | Single work slot — DayOffset + StartTime + Duration |
+| ShiftSignup | Links User to Shift with state machine (Pending/Confirmed/Refused/Bailed/Cancelled/NoShow) |
+| VolunteerEventProfile | Per-event volunteer profile with skills, dietary, medical data |
 
 ## Relationships
 
@@ -92,6 +97,17 @@ EmailOutboxMessage n──1 CampaignGrant (optional)
 TicketOrder 1──n TicketAttendee
 TicketOrder n──1 User (MatchedUser, optional — auto-matched by email)
 TicketAttendee n──1 User (MatchedUser, optional — auto-matched by email)
+
+EventSettings 1──n Rota
+Rota n──1 Team (department — ParentTeamId IS NULL)
+Rota 1──n Shift
+Shift 1──n ShiftSignup
+ShiftSignup n──1 User (volunteer)
+ShiftSignup n──1 User (EnrolledByUser, optional)
+ShiftSignup n──1 User (ReviewedByUser, optional)
+EmailOutboxMessage n──1 ShiftSignup (optional)
+VolunteerEventProfile n──1 User
+VolunteerEventProfile n──1 EventSettings
 ```
 
 ## User Entity

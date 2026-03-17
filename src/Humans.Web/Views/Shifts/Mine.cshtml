@@ -1,0 +1,194 @@
+@model Humans.Web.Models.MyShiftsViewModel
+@using Humans.Domain.Enums
+@using NodaTime
+
+@{
+    ViewData["Title"] = "My Shifts";
+    var tz = Model.EventSettings != null ? DateTimeZoneProviders.Tzdb[Model.EventSettings.TimeZoneId] : null;
+}
+
+@functions {
+    string FormatDate(EventSettings es, int dayOffset)
+    {
+        var date = es.GateOpeningDate.PlusDays(dayOffset);
+        return date.DayOfWeek.ToString()[..3] + " " + date.ToString("MMM d", null);
+    }
+
+    string FormatTime(Instant instant, DateTimeZone tz)
+    {
+        var zoned = instant.InZone(tz);
+        return zoned.ToString("HH:mm", null);
+    }
+
+    string GetPhase(Shift shift, EventSettings es)
+    {
+        var period = shift.GetShiftPeriod(es);
+        return period switch
+        {
+            ShiftPeriod.Build => "Build",
+            ShiftPeriod.Event => "Burn",
+            ShiftPeriod.Strike => "Strike",
+            _ => ""
+        };
+    }
+
+    string GetPhaseBadge(Shift shift, EventSettings es)
+    {
+        var period = shift.GetShiftPeriod(es);
+        return period switch
+        {
+            ShiftPeriod.Build => "bg-info",
+            ShiftPeriod.Event => "bg-success",
+            ShiftPeriod.Strike => "bg-secondary",
+            _ => "bg-secondary"
+        };
+    }
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>My Shifts</h2>
+        <a asp-action="Index" class="btn btn-outline-primary">Browse Shifts</a>
+    </div>
+
+    <vc:temp-data-alerts />
+
+    @if (Model.EventSettings == null)
+    {
+        <div class="alert alert-info">No active event configured.</div>
+    }
+    else
+    {
+        var es = Model.EventSettings;
+
+        @if (Model.Upcoming.Count > 0)
+        {
+            <div class="card mb-4">
+                <div class="card-header"><h5 class="mb-0">Upcoming Shifts</h5></div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr><th>Department</th><th>Shift</th><th>Phase</th><th>Date</th><th>Time</th><th>Duration</th><th></th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in Model.Upcoming)
+                                {
+                                    var shift = item.Signup.Shift;
+                                    <tr>
+                                        <td>@item.DepartmentName</td>
+                                        <td>@shift.Title</td>
+                                        <td><span class="badge @GetPhaseBadge(shift, es)">@GetPhase(shift, es)</span></td>
+                                        <td>@FormatDate(es, shift.DayOffset)</td>
+                                        <td>@FormatTime(item.AbsoluteStart, tz!)</td>
+                                        <td>@(shift.Duration.TotalHours)h</td>
+                                        <td>
+                                            <form asp-action="Bail" method="post" class="d-inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="signupId" value="@item.Signup.Id" />
+                                                <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                        onclick="return confirm('Are you sure you want to bail?')">Bail</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (Model.Pending.Count > 0)
+        {
+            <div class="card mb-4">
+                <div class="card-header"><h5 class="mb-0">Pending Approval</h5></div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr><th>Department</th><th>Shift</th><th>Phase</th><th>Date</th><th>Time</th><th>Duration</th><th></th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in Model.Pending)
+                                {
+                                    var shift = item.Signup.Shift;
+                                    <tr>
+                                        <td>@item.DepartmentName</td>
+                                        <td>@shift.Title</td>
+                                        <td><span class="badge @GetPhaseBadge(shift, es)">@GetPhase(shift, es)</span></td>
+                                        <td>@FormatDate(es, shift.DayOffset)</td>
+                                        <td>@FormatTime(item.AbsoluteStart, tz!)</td>
+                                        <td>@(shift.Duration.TotalHours)h</td>
+                                        <td>
+                                            <form asp-action="Bail" method="post" class="d-inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="signupId" value="@item.Signup.Id" />
+                                                <button type="submit" class="btn btn-sm btn-outline-secondary">Withdraw</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (Model.Past.Count > 0)
+        {
+            <div class="card mb-4">
+                <div class="card-header"><h5 class="mb-0">Past</h5></div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr><th>Department</th><th>Shift</th><th>Phase</th><th>Date</th><th>Time</th><th>Duration</th><th>Status</th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in Model.Past)
+                                {
+                                    var shift = item.Signup.Shift;
+                                    <tr>
+                                        <td>@item.DepartmentName</td>
+                                        <td>@shift.Title</td>
+                                        <td><span class="badge @GetPhaseBadge(shift, es)">@GetPhase(shift, es)</span></td>
+                                        <td>@FormatDate(es, shift.DayOffset)</td>
+                                        <td>@FormatTime(item.AbsoluteStart, tz!)</td>
+                                        <td>@(shift.Duration.TotalHours)h</td>
+                                        <td><span class="badge bg-secondary">@item.Signup.Status</span></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (Model.Upcoming.Count == 0 && Model.Pending.Count == 0 && Model.Past.Count == 0)
+        {
+            <div class="alert alert-info">No shift signups yet. <a asp-action="Index">Browse available shifts</a>.</div>
+        }
+
+        @if (Model.ICalUrl != null)
+        {
+            <div class="card mb-4">
+                <div class="card-header"><h5 class="mb-0">iCal Feed</h5></div>
+                <div class="card-body">
+                    <p class="text-muted">Subscribe to your shifts in your calendar app:</p>
+                    <div class="input-group mb-2">
+                        <input type="text" class="form-control" id="icalUrl" value="@Model.ICalUrl" readonly />
+                        <button class="btn btn-outline-secondary" type="button" onclick="navigator.clipboard.writeText(document.getElementById('icalUrl').value)">Copy</button>
+                    </div>
+                    <form asp-action="RegenerateIcal" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-sm btn-outline-warning"
+                                onclick="return confirm('This will invalidate the current URL. Continue?')">Regenerate URL</button>
+                    </form>
+                </div>
+            </div>
+        }
+    }
+</div>

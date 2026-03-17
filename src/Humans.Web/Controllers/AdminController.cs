@@ -453,4 +453,15 @@ public class AdminController : Controller
         await _dbContext.SaveChangesAsync();
     }
 
+    [HttpPost("ClearHangfireLocks")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ClearHangfireLocks()
+    {
+        var deleted = await _dbContext.Database.ExecuteSqlRawAsync("DELETE FROM hangfire.lock");
+
+        _logger.LogWarning("Admin cleared {Count} stale Hangfire locks", deleted);
+        TempData["SuccessMessage"] = $"Cleared {deleted} Hangfire lock(s). Restart the app to re-register recurring jobs.";
+        return RedirectToAction(nameof(Index));
+    }
+
 }

@@ -75,7 +75,17 @@ public class EnumStringStabilityTests
                 "TeamJoinedDirectly", "TeamLeft", "TeamJoinRequestApproved", "TeamJoinRequestRejected",
                 "TeamMemberRoleChanged", "AnomalousPermissionDetected",
                 "MembershipsRevokedOnDeletionRequest", "ConsentCheckCleared", "ConsentCheckFlagged",
-                "SignupRejected", "TierApplicationApproved", "TierApplicationRejected", "TierDowngraded"
+                "SignupRejected", "TierApplicationApproved", "TierApplicationRejected", "TierDowngraded",
+                "GoogleResourceDeactivated", "FacilitatedMessageSent",
+                "TeamRoleDefinitionCreated", "TeamRoleDefinitionUpdated", "TeamRoleDefinitionDeleted",
+                "TeamRoleAssigned", "TeamRoleUnassigned",
+                "CampCreated", "CampUpdated", "CampDeleted",
+                "CampSeasonCreated", "CampSeasonApproved", "CampSeasonRejected",
+                "CampSeasonWithdrawn", "CampSeasonStatusChanged", "CampNameChanged",
+                "CampLeadAdded", "CampLeadRemoved", "CampPrimaryLeadTransferred",
+                "CampImageUploaded", "CampImageDeleted",
+                "ShiftSignupConfirmed", "ShiftSignupRefused", "ShiftSignupVoluntold",
+                "ShiftSignupBailed", "ShiftSignupNoShow", "ShiftSignupCancelled"
             }
         },
         {
@@ -117,6 +127,18 @@ public class EnumStringStabilityTests
         {
             typeof(TicketAttendeeStatus),
             new[] { "Valid", "Void", "CheckedIn" }
+        },
+        {
+            typeof(ShiftPriority),
+            new[] { "Normal", "Important", "Essential" }
+        },
+        {
+            typeof(SignupPolicy),
+            new[] { "Public", "RequireApproval" }
+        },
+        {
+            typeof(SignupStatus),
+            new[] { "Pending", "Confirmed", "Refused", "Bailed", "Cancelled", "NoShow" }
         }
     };
 }
