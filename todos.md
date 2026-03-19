@@ -41,6 +41,15 @@ New `SharedResource.ca.resx` with all ~805 keys, register `"ca"` culture in `Pro
 #### #97: Add communication preference management with magic-link unsubscribe
 Let humans manage email notification preferences with magic-link unsubscribe support. Label: enhancement.
 
+#### #161: Add shift exports, iCal feed, and post-event stats
+Slice 4 of shift management: CSV exports (department/all rotas, EE list, cantina), iCal personal feed, post-event stats dashboard. Depends on #135 (slices 1-3, complete). Independent of #162.
+
+#### #162: Add shift notification emails and signup cleanup jobs
+Slice 5 of shift management: 8 email triggers, DutySignupId FK dedup, reminder cron job, signup GC job, notification preferences. Depends on #135 (slices 1-3, complete). Independent of #161.
+
+#### #163: Gather feedback on shift management UX before slices 4-5
+Get coordinator and volunteer feedback on slices 1-3 before building #161 and #162. Deploy to QA, gather hands-on testing feedback, adjust scope if needed.
+
 ---
 
 ### Priority 3: Medium Features
@@ -53,6 +62,15 @@ Three parts: (1) Associate @nobodies.team emails with humans and force as primar
 
 #### #126: Add Stripe fee tracking to ticket vendor integration
 Track Stripe processing fees on ticket purchases for financial reporting. Label: enhancement.
+
+#### #157: Add bus ticket sales for event transport
+First Stripe write integration. Departures, capacity, per-passenger booking, QR codes, scanner, manifests. Shared Stripe checkout/webhook layer reusable by future stores. Builds on #126. Design spec: `docs/specs/2026-03-19-bus-ticketing-platform-design.md`.
+
+#### #158: Add barrio services store for at-cost supplies
+Container transport, water, ice, butane — at-cost services for barrios. Second store on the shared Stripe payment layer built for #157. Buyers can be individuals or barrios.
+
+#### #159: Add invoice generation for Stripe payments
+Official invoices for people and barrios against Stripe payments. Spanish nonprofit requirements (NIF/CIF, sequential numbering). PDF generation. Covers all stores (#157, #158). Depends on both prior issues.
 
 #### #116: Add per-team Google Drive permission level configuration
 Configure Drive permission levels (viewer/commenter/editor) per team instead of global default. Label: enhancement.
