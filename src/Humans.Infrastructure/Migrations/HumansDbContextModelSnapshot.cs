@@ -483,6 +483,9 @@ namespace Humans.Infrastructure.Migrations
                     b.Property<Instant>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("VatRate")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ResponsibleTeamId")
@@ -2604,6 +2607,10 @@ namespace Humans.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<decimal>("DonationAmount")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
+
                     b.Property<Guid?>("MatchedUserId")
                         .HasColumnType("uuid");
 
@@ -2635,6 +2642,10 @@ namespace Humans.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<decimal>("TotalAmount")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
+
+                    b.Property<decimal>("VatAmount")
                         .HasPrecision(10, 2)
                         .HasColumnType("numeric(10,2)");
 

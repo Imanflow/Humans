@@ -60,6 +60,7 @@ public class BudgetService : IBudgetService
     public async Task<BudgetYear?> GetActiveYearAsync()
     {
         var activeYear = await _dbContext.BudgetYears
+            .OrderBy(y => y.Id)
             .FirstOrDefaultAsync(y => y.Status == BudgetYearStatus.Active && !y.IsDeleted);
 
         if (activeYear is null)
@@ -237,6 +238,7 @@ public class BudgetService : IBudgetService
 
         var deptGroup = await _dbContext.BudgetGroups
             .Include(g => g.Categories)
+            .OrderBy(g => g.Id)
             .FirstOrDefaultAsync(g => g.BudgetYearId == budgetYearId && g.IsDepartmentGroup)
             ?? throw new InvalidOperationException("No Departments group found for this budget year");
 
@@ -511,8 +513,11 @@ public class BudgetService : IBudgetService
 
     public async Task<BudgetLineItem> CreateLineItemAsync(
         Guid budgetCategoryId, string description, decimal amount,
-        Guid? responsibleTeamId, string? notes, LocalDate? expectedDate, Guid actorUserId)
+        Guid? responsibleTeamId, string? notes, LocalDate? expectedDate,
+        int vatRate, Guid actorUserId)
     {
+        ValidateVatRate(vatRate);
+
         var category = await _dbContext.BudgetCategories
             .Include(c => c.BudgetGroup)
             .FirstOrDefaultAsync(c => c.Id == budgetCategoryId)
@@ -535,6 +540,7 @@ public class BudgetService : IBudgetService
             ResponsibleTeamId = responsibleTeamId,
             Notes = notes,
             ExpectedDate = expectedDate,
+            VatRate = vatRate,
             SortOrder = maxSortOrder + 1,
             CreatedAt = now,
             UpdatedAt = now
@@ -555,8 +561,11 @@ public class BudgetService : IBudgetService
 
     public async Task UpdateLineItemAsync(
         Guid lineItemId, string description, decimal amount,
-        Guid? responsibleTeamId, string? notes, LocalDate? expectedDate, Guid actorUserId)
+        Guid? responsibleTeamId, string? notes, LocalDate? expectedDate,
+        int vatRate, Guid actorUserId)
     {
+        ValidateVatRate(vatRate);
+
         var lineItem = await _dbContext.BudgetLineItems
             .Include(li => li.BudgetCategory)
                 .ThenInclude(c => c!.BudgetGroup)
@@ -611,9 +620,24 @@ public class BudgetService : IBudgetService
             lineItem.ExpectedDate = expectedDate;
         }
 
+        if (lineItem.VatRate != vatRate)
+        {
+            LogAudit(budgetYearId, nameof(BudgetLineItem), lineItem.Id,
+                nameof(BudgetLineItem.VatRate),
+                lineItem.VatRate.ToString(CultureInfo.InvariantCulture), vatRate.ToString(CultureInfo.InvariantCulture),
+                actorUserId, now);
+            lineItem.VatRate = vatRate;
+        }
+
         lineItem.UpdatedAt = now;
 
         await _dbContext.SaveChangesAsync();
+    }
+
+    private static void ValidateVatRate(int vatRate)
+    {
+        if (vatRate is < 0 or > 21)
+            throw new ArgumentOutOfRangeException(nameof(vatRate), vatRate, "VAT rate must be between 0 and 21.");
     }
 
     public async Task DeleteLineItemAsync(Guid lineItemId, Guid actorUserId)
