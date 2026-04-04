@@ -88,6 +88,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<ITeamService, TeamService>();
         services.AddScoped<ITeamPageService, TeamPageService>();
         services.AddScoped<ICampService, CampService>();
+        services.AddScoped<ICampContactService, CampContactService>();
         services.AddScoped<ICommunicationPreferenceService, CommunicationPreferenceService>();
         services.AddScoped<ICampaignService, CampaignService>();
         services.AddScoped<IContactFieldService, ContactFieldService>();
@@ -174,6 +175,9 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<TermRenewalReminderJob>();
         services.AddScoped<CleanupNotificationsJob>();
         services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<INotificationInboxService, NotificationInboxService>();
+        services.AddScoped<INotificationMeterProvider, NotificationMeterProvider>();
+        services.AddScoped<IGoogleAdminService, GoogleAdminService>();
 
         // Shift management services
         services.AddScoped<IShiftManagementService, ShiftManagementService>();

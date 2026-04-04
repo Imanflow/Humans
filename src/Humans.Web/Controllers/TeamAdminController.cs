@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Localization;
 using Humans.Application.Interfaces;
 using Humans.Web.Authorization;
@@ -21,9 +22,10 @@ public class TeamAdminController : HumansTeamControllerBase
     private readonly ITeamResourceService _teamResourceService;
     private readonly IGoogleSyncService _googleSyncService;
     private readonly IProfileService _profileService;
-    private readonly IUserEmailService _userEmailService;
     private readonly IEmailProvisioningService _emailProvisioningService;
+    private readonly INotificationService _notificationService;
     private readonly ISystemTeamSync _systemTeamSyncJob;
+    private readonly IMemoryCache _cache;
     private readonly ILogger<TeamAdminController> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
 
@@ -32,10 +34,11 @@ public class TeamAdminController : HumansTeamControllerBase
         ITeamResourceService teamResourceService,
         IGoogleSyncService googleSyncService,
         IProfileService profileService,
-        IUserEmailService userEmailService,
         IEmailProvisioningService emailProvisioningService,
+        INotificationService notificationService,
         UserManager<User> userManager,
         ISystemTeamSync systemTeamSyncJob,
+        IMemoryCache cache,
         ILogger<TeamAdminController> logger,
         IStringLocalizer<SharedResource> localizer)
         : base(userManager, teamService)
@@ -44,9 +47,10 @@ public class TeamAdminController : HumansTeamControllerBase
         _teamResourceService = teamResourceService;
         _googleSyncService = googleSyncService;
         _profileService = profileService;
-        _userEmailService = userEmailService;
         _emailProvisioningService = emailProvisioningService;
+        _notificationService = notificationService;
         _systemTeamSyncJob = systemTeamSyncJob;
+        _cache = cache;
         _logger = logger;
         _localizer = localizer;
     }
@@ -63,8 +67,26 @@ public class TeamAdminController : HumansTeamControllerBase
 
         try
         {
-            await _teamService.ApproveJoinRequestAsync(requestId, user.Id, model.Notes);
+            var newMember = await _teamService.ApproveJoinRequestAsync(requestId, user.Id, model.Notes);
             SetSuccess(_localizer["TeamAdmin_RequestApproved"].Value);
+
+            // Notify requester (best-effort)
+            try
+            {
+                await _notificationService.SendAsync(
+                    NotificationSource.TeamJoinRequestDecided,
+                    NotificationClass.Informational,
+                    NotificationPriority.Normal,
+                    $"Your request to join {team.Name} has been approved",
+                    [newMember.UserId],
+                    body: $"Welcome to {team.Name}!",
+                    actionUrl: $"/Teams/{slug}",
+                    actionLabel: "View team");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to dispatch TeamJoinRequestDecided notification for request {RequestId}", requestId);
+            }
         }
         catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
         {
@@ -91,10 +113,36 @@ public class TeamAdminController : HumansTeamControllerBase
             return RedirectToAction(nameof(Members), new { slug });
         }
 
+        // Look up requester before rejection (service consumes the request)
+        var pendingRequests = await _teamService.GetPendingRequestsForTeamAsync(team.Id);
+        var request = pendingRequests.FirstOrDefault(r => r.Id == requestId);
+        var requesterUserId = request?.UserId;
+
         try
         {
             await _teamService.RejectJoinRequestAsync(requestId, user.Id, model.Notes);
             SetSuccess(_localizer["TeamAdmin_RequestRejected"].Value);
+
+            // Notify requester (best-effort)
+            if (requesterUserId.HasValue)
+            {
+                try
+                {
+                    await _notificationService.SendAsync(
+                        NotificationSource.TeamJoinRequestDecided,
+                        NotificationClass.Informational,
+                        NotificationPriority.Normal,
+                        $"Your request to join {team.Name} was not approved",
+                        [requesterUserId.Value],
+                        body: $"Your request to join {team.Name} was not approved.",
+                        actionUrl: "/Teams",
+                        actionLabel: "Browse teams");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to dispatch TeamJoinRequestDecided notification for request {RequestId}", requestId);
+                }
+            }
         }
         catch (InvalidOperationException ex)
         {
@@ -129,9 +177,7 @@ public class TeamAdminController : HumansTeamControllerBase
             p => p.UserId,
             p => Url.Action(nameof(ProfileController.Picture), "Profile", new { id = p.ProfileId, v = p.UpdatedAtTicks })!);
 
-        // Batch-load @nobodies.team email status for all displayed members
-        var nobodiesEmails = await _userEmailService.GetNobodiesTeamEmailsByUserIdsAsync(memberUserIds);
-
+        // nobodies.team email is now resolved by NobodiesEmailBadgeViewComponent in the view
         var members = pagedMembers
             .Select(m => new TeamMemberViewModel
             {
@@ -143,8 +189,7 @@ public class TeamAdminController : HumansTeamControllerBase
                 CustomProfilePictureUrl = customPictureByUserId.GetValueOrDefault(m.UserId),
                 Role = m.Role,
                 JoinedAt = m.JoinedAt.ToDateTimeUtc(),
-                IsCoordinator = m.Role == TeamMemberRole.Coordinator,
-                NobodiesTeamEmail = nobodiesEmails.GetValueOrDefault(m.UserId)
+                IsCoordinator = m.Role == TeamMemberRole.Coordinator
             }).ToList();
 
         var pendingRequests = await _teamService.GetPendingRequestsForTeamAsync(team.Id);
@@ -306,19 +351,25 @@ public class TeamAdminController : HumansTeamControllerBase
         }
 
         var result = await _emailProvisioningService.ProvisionNobodiesEmailAsync(
-            userId, emailPrefix, user.Id, user.DisplayName);
+            userId, emailPrefix, user.Id);
 
         if (!result.Success)
         {
             SetError(result.ErrorMessage ?? "Provisioning failed.");
         }
-        else if (result.RecoveryEmail is not null)
-        {
-            SetSuccess($"Account {result.FullEmail} provisioned and linked. Credentials sent to {result.RecoveryEmail}.");
-        }
         else
         {
-            SetSuccess($"Account {result.FullEmail} provisioned and linked. No recovery email found — credentials not sent.");
+            // Evict the nobodies.team email cache so the ViewComponent reflects the new email immediately
+            _cache.Remove(ViewComponents.NobodiesEmailBadgeViewComponent.CacheKey);
+
+            if (result.RecoveryEmail is not null)
+            {
+                SetSuccess($"Account {result.FullEmail} provisioned and linked. Credentials sent to {result.RecoveryEmail}.");
+            }
+            else
+            {
+                SetSuccess($"Account {result.FullEmail} provisioned and linked. No recovery email found — credentials not sent.");
+            }
         }
 
         return RedirectToAction(nameof(Members), new { slug });
@@ -370,7 +421,7 @@ public class TeamAdminController : HumansTeamControllerBase
             return NotFound();
         }
 
-        if (!await CanManageResourcesAsync(team.Id, user.Id))
+        if (!await CanManageResourcesAsync(team, user.Id))
         {
             return Forbid();
         }
@@ -428,7 +479,7 @@ public class TeamAdminController : HumansTeamControllerBase
             return NotFound();
         }
 
-        if (!await CanManageResourcesAsync(team.Id, user.Id))
+        if (!await CanManageResourcesAsync(team, user.Id))
         {
             return Forbid();
         }
@@ -474,7 +525,7 @@ public class TeamAdminController : HumansTeamControllerBase
             return NotFound();
         }
 
-        if (!await CanManageResourcesAsync(team.Id, user.Id))
+        if (!await CanManageResourcesAsync(team, user.Id))
         {
             return Forbid();
         }
@@ -520,7 +571,7 @@ public class TeamAdminController : HumansTeamControllerBase
             return NotFound();
         }
 
-        if (!await CanManageResourcesAsync(team.Id, user.Id))
+        if (!await CanManageResourcesAsync(team, user.Id))
         {
             return Forbid();
         }
@@ -553,7 +604,7 @@ public class TeamAdminController : HumansTeamControllerBase
             return NotFound();
         }
 
-        if (!await CanManageResourcesAsync(team.Id, user.Id))
+        if (!await CanManageResourcesAsync(team, user.Id))
         {
             return Forbid();
         }
@@ -589,7 +640,7 @@ public class TeamAdminController : HumansTeamControllerBase
             return NotFound();
         }
 
-        if (!await CanManageResourcesAsync(team.Id, user.Id))
+        if (!await CanManageResourcesAsync(team, user.Id))
         {
             return Forbid();
         }
@@ -616,7 +667,7 @@ public class TeamAdminController : HumansTeamControllerBase
             return NotFound();
         }
 
-        if (!await CanManageResourcesAsync(team.Id, user.Id))
+        if (!await CanManageResourcesAsync(team, user.Id))
         {
             return Forbid();
         }
@@ -995,10 +1046,14 @@ public class TeamAdminController : HumansTeamControllerBase
         return Json(combined);
     }
 
-    private async Task<bool> CanManageResourcesAsync(Guid teamId, Guid userId)
+    private async Task<bool> CanManageResourcesAsync(Team team, Guid userId)
     {
         // Claims-first for global roles; DB only for team-specific coordinator check
-        return RoleChecks.IsTeamsAdminBoardOrAdmin(User) ||
-               await _teamResourceService.CanManageTeamResourcesAsync(teamId, userId);
+        if (RoleChecks.IsTeamsAdminBoardOrAdmin(User))
+            return true;
+
+        // Sub-team managers cannot manage Google resources — check at department level
+        var checkTeamId = team.ParentTeamId ?? team.Id;
+        return await _teamResourceService.CanManageTeamResourcesAsync(checkTeamId, userId);
     }
 }

@@ -21,6 +21,7 @@ using Humans.Web.Authorization;
 using Humans.Web.Extensions;
 using Humans.Web.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 
 namespace Humans.Web.Controllers;
@@ -46,6 +47,7 @@ public class ProfileController : HumansControllerBase
     private readonly ILogger<ProfileController> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly HumansDbContext _dbContext;
+    private readonly IMemoryCache _cache;
     private readonly IClock _clock;
 
     private const int MaxProfilePictureUploadBytes = 20 * 1024 * 1024; // 20MB upload limit
@@ -89,6 +91,7 @@ public class ProfileController : HumansControllerBase
         ILogger<ProfileController> logger,
         IStringLocalizer<SharedResource> localizer,
         HumansDbContext dbContext,
+        IMemoryCache cache,
         IClock clock)
         : base(userManager)
     {
@@ -109,6 +112,7 @@ public class ProfileController : HumansControllerBase
         _logger = logger;
         _localizer = localizer;
         _dbContext = dbContext;
+        _cache = cache;
         _clock = clock;
     }
 
@@ -536,6 +540,7 @@ public class ProfileController : HumansControllerBase
         {
             var decodedToken = HttpUtility.UrlDecode(token);
             var result = await _userEmailService.VerifyEmailAsync(userId, decodedToken);
+            _cache.Remove(ViewComponents.NobodiesEmailBadgeViewComponent.CacheKey);
 
             if (result.MergeRequestCreated)
             {
@@ -586,6 +591,7 @@ public class ProfileController : HumansControllerBase
         try
         {
             await _userEmailService.SetNotificationTargetAsync(user.Id, emailId);
+            _cache.Remove(ViewComponents.NobodiesEmailBadgeViewComponent.CacheKey);
             SetSuccess(_localizer["Profile_NotificationTargetUpdated"].Value);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
@@ -636,6 +642,7 @@ public class ProfileController : HumansControllerBase
         try
         {
             await _userEmailService.DeleteEmailAsync(user.Id, emailId);
+            _cache.Remove(ViewComponents.NobodiesEmailBadgeViewComponent.CacheKey);
             SetSuccess(_localizer["Profile_EmailDeleted"].Value);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
@@ -676,10 +683,19 @@ public class ProfileController : HumansControllerBase
             }
 
             // null = use OAuth email (default behavior)
+            var previousEmail = user.GoogleEmail;
             user.GoogleEmail = email.IsOAuth ? null : email.Email;
+            user.GoogleEmailStatus = GoogleEmailStatus.Unknown;
             await _userManager.UpdateAsync(user);
 
-            SetSuccess("Google service email updated.");
+            // If email changed, enqueue fresh sync events for all current team memberships
+            var newEmail = user.GetGoogleServiceEmail();
+            if (!string.Equals(previousEmail ?? user.Email, newEmail, StringComparison.OrdinalIgnoreCase))
+            {
+                await EnqueueResyncForUserTeamsAsync(user.Id);
+            }
+
+            SetSuccess("Google service email updated. Sync will be retried with the new email.");
         }
         catch (Exception ex)
         {
@@ -839,8 +855,8 @@ public class ProfileController : HumansControllerBase
         }
     }
 
-    [HttpGet("Me/Notifications")]
-    public async Task<IActionResult> Notifications()
+    [HttpGet("Me/CommunicationPreferences")]
+    public async Task<IActionResult> CommunicationPreferences()
     {
         try
         {
@@ -852,42 +868,39 @@ public class ProfileController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load notification settings");
-            SetError("Failed to load notification settings.");
+            _logger.LogError(ex, "Failed to load communication preferences");
+            SetError("Failed to load communication preferences.");
             return RedirectToAction(nameof(Me));
         }
     }
 
-    [HttpPost("Me/Notifications")]
+    [HttpPost("Me/CommunicationPreferences/Update")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Notifications(CommunicationPreferencesViewModel model)
+    public async Task<IActionResult> UpdatePreference(MessageCategory category, bool emailEnabled, bool alertEnabled)
     {
         try
         {
             var user = await GetCurrentUserAsync();
             if (user is null)
-                return NotFound();
+                return Unauthorized();
 
-            foreach (var item in model.Categories)
-            {
-                if (item.Category == MessageCategory.System)
-                    continue;
+            if (category.IsAlwaysOn())
+                return BadRequest("Cannot change always-on categories.");
 
-                await _commPrefService.UpdatePreferenceAsync(
-                    user.Id, item.Category, item.OptedOut, "Profile");
-            }
+            await _commPrefService.UpdatePreferenceAsync(
+                user.Id, category, optedOut: !emailEnabled, inboxEnabled: alertEnabled, "Profile");
 
-            SetSuccess(_localizer["Profile_Updated"].Value);
-            return RedirectToAction(nameof(Notifications));
+            return Ok();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to save notification settings");
-            SetError("Failed to save notification settings.");
-            PopulateCommunicationPreferenceMetadata(model);
-            return View(model);
+            _logger.LogError(ex, "Failed to save communication preference for {Category}", category);
+            return StatusCode(500);
         }
     }
+
+    [HttpGet("Me/Notifications")]
+    public IActionResult Notifications() => RedirectToActionPermanent(nameof(CommunicationPreferences));
 
     [HttpGet("Me/DownloadData")]
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
@@ -944,7 +957,7 @@ public class ProfileController : HumansControllerBase
         List<NoShowHistoryItem>? noShowHistory = null;
         if (!isOwnProfile)
         {
-            var viewerIsCoordinator = (await _shiftMgmt.GetCoordinatorDepartmentIdsAsync(viewer.Id)).Count > 0;
+            var viewerIsCoordinator = (await _shiftMgmt.GetCoordinatorTeamIdsAsync(viewer.Id)).Count > 0;
             var viewerCanViewShiftHistory = viewerIsCoordinator || ShiftRoleChecks.IsPrivilegedSignupApprover(User);
 
             if (viewerCanViewShiftHistory)
@@ -1034,6 +1047,12 @@ public class ProfileController : HumansControllerBase
         if (targetUser is null)
             return NotFound();
 
+        if (!await _commPrefService.AcceptsFacilitatedMessagesAsync(id))
+        {
+            SetError("This human has opted out of receiving messages.");
+            return RedirectToAction(nameof(ViewProfile), new { id });
+        }
+
         var viewModel = new SendMessageViewModel
         {
             RecipientId = id,
@@ -1059,6 +1078,12 @@ public class ProfileController : HumansControllerBase
             .FirstOrDefaultAsync(u => u.Id == id);
         if (targetUser is null)
             return NotFound();
+
+        if (!await _commPrefService.AcceptsFacilitatedMessagesAsync(id))
+        {
+            SetError("This human has opted out of receiving messages.");
+            return RedirectToAction(nameof(ViewProfile), new { id });
+        }
 
         model.RecipientId = id;
         model.RecipientDisplayName = targetUser.DisplayName;
@@ -1102,7 +1127,7 @@ public class ProfileController : HumansControllerBase
             AuditAction.FacilitatedMessageSent,
             nameof(User), targetUser.Id,
             $"Message sent to {targetUser.DisplayName} (contact info shared: {(model.IncludeContactInfo ? "yes" : "no")})",
-            currentUser.Id, currentUser.DisplayName);
+            currentUser.Id);
 
         SetSuccess(string.Format(
             _localizer["SendMessage_Success"].Value,
@@ -1142,10 +1167,8 @@ public class ProfileController : HumansControllerBase
         var allRows = await _profileService.GetFilteredHumansAsync(search, filter);
         var totalCount = allRows.Count;
 
-        // Load @nobodies.team email status for all users (fine at ~500 users)
-        var nobodiesTeamByUser = await _userEmailService.GetNobodiesTeamEmailStatusByUserAsync();
-
         // Materialize for flexible sorting (fine at ~500 users)
+        // nobodies.team email status is now resolved by NobodiesEmailBadgeViewComponent in the view
         var allMatching = allRows.Select(r => new AdminHumanViewModel
         {
             Id = r.UserId,
@@ -1156,9 +1179,7 @@ public class ProfileController : HumansControllerBase
             LastLoginAt = r.LastLoginAt,
             HasProfile = r.HasProfile,
             IsApproved = r.IsApproved,
-            MembershipStatus = r.MembershipStatus,
-            HasNobodiesTeamEmail = nobodiesTeamByUser.ContainsKey(r.UserId),
-            NobodiesTeamEmailIsPrimary = nobodiesTeamByUser.TryGetValue(r.UserId, out var isPrimary) && isPrimary
+            MembershipStatus = r.MembershipStatus
         }).ToList();
 
         var ascending = !string.Equals(dir, "desc", StringComparison.OrdinalIgnoreCase);
@@ -1262,18 +1283,9 @@ public class ProfileController : HumansControllerBase
                 CreatedByName = ra.CreatedByUser?.DisplayName,
                 CreatedAt = ra.CreatedAt.ToDateTimeUtc()
             }).ToList(),
-            AuditLog = data.AuditEntries.Select(e => new AuditLogEntryViewModel
-            {
-                Action = Enum.TryParse<AuditAction>(e.Action, out var parsedAction) ? parsedAction : default,
-                Description = e.Description,
-                OccurredAt = e.OccurredAt,
-                ActorName = e.ActorName ?? string.Empty,
-                IsSystemAction = e.IsSystemAction
-            }).ToList()
         };
 
-        // Check for @nobodies.team email
-        viewModel.NobodiesTeamEmail = await _userEmailService.GetNobodiesTeamEmailAsync(id);
+        // nobodies.team email is now resolved by NobodiesEmailBadgeViewComponent in the view
 
         return View("AdminDetail", viewModel);
     }
@@ -1300,7 +1312,7 @@ public class ProfileController : HumansControllerBase
         if (currentUser is null)
             return NotFound();
 
-        var result = await _onboardingService.SuspendAsync(id, currentUser.Id, currentUser.DisplayName, notes);
+        var result = await _onboardingService.SuspendAsync(id, currentUser.Id, notes);
         if (!result.Success)
             return NotFound();
 
@@ -1317,7 +1329,7 @@ public class ProfileController : HumansControllerBase
         if (currentUser is null)
             return NotFound();
 
-        var result = await _onboardingService.UnsuspendAsync(id, currentUser.Id, currentUser.DisplayName);
+        var result = await _onboardingService.UnsuspendAsync(id, currentUser.Id);
         if (!result.Success)
             return NotFound();
 
@@ -1334,7 +1346,7 @@ public class ProfileController : HumansControllerBase
         if (currentUser is null)
             return NotFound();
 
-        var result = await _onboardingService.ApproveVolunteerAsync(id, currentUser.Id, currentUser.DisplayName);
+        var result = await _onboardingService.ApproveVolunteerAsync(id, currentUser.Id);
         if (!result.Success)
             return NotFound();
 
@@ -1351,7 +1363,7 @@ public class ProfileController : HumansControllerBase
         if (currentUser is null)
             return Unauthorized();
 
-        var result = await _onboardingService.RejectSignupAsync(id, currentUser.Id, currentUser.DisplayName, reason);
+        var result = await _onboardingService.RejectSignupAsync(id, currentUser.Id, reason);
         if (!result.Success)
         {
             if (string.Equals(result.ErrorKey, "AlreadyRejected", StringComparison.Ordinal))
@@ -1418,7 +1430,7 @@ public class ProfileController : HumansControllerBase
         }
 
         var result = await _roleAssignmentService.AssignRoleAsync(
-            id, model.RoleName, currentUser.Id, currentUser.DisplayName, model.Notes);
+            id, model.RoleName, currentUser.Id, model.Notes);
 
         if (!result.Success)
         {
@@ -1455,7 +1467,7 @@ public class ProfileController : HumansControllerBase
         }
 
         var result = await _roleAssignmentService.EndRoleAsync(
-            roleId, currentUser.Id, currentUser.DisplayName, notes);
+            roleId, currentUser.Id, notes);
 
         if (!result.Success)
         {
@@ -1514,34 +1526,80 @@ public class ProfileController : HumansControllerBase
             CanAddEmail = canAdd,
             MinutesUntilResend = minutesUntilResend,
             GoogleServiceEmail = user.GoogleEmail,
-            HasNobodiesTeamEmail = hasNobodiesTeam
+            HasNobodiesTeamEmail = hasNobodiesTeam,
+            GoogleEmailStatus = user.GoogleEmailStatus
         };
+    }
+
+    /// <summary>
+    /// Enqueues fresh AddUserToTeamResources sync events for all teams the user is currently a member of.
+    /// Used when the Google service email changes to trigger re-sync with the updated email.
+    /// </summary>
+    private async Task EnqueueResyncForUserTeamsAsync(Guid userId)
+    {
+        var memberships = await _dbContext.TeamMembers
+            .Where(tm => tm.UserId == userId && tm.LeftAt == null)
+            .Select(tm => new { tm.Id, tm.TeamId })
+            .ToListAsync();
+
+        var now = _clock.GetCurrentInstant();
+        foreach (var membership in memberships)
+        {
+            var dedupeKey = $"{membership.Id}:{GoogleSyncOutboxEventTypes.AddUserToTeamResources}:resync:{now}";
+            _dbContext.GoogleSyncOutboxEvents.Add(new GoogleSyncOutboxEvent
+            {
+                Id = Guid.NewGuid(),
+                EventType = GoogleSyncOutboxEventTypes.AddUserToTeamResources,
+                TeamId = membership.TeamId,
+                UserId = userId,
+                OccurredAt = now,
+                DeduplicationKey = dedupeKey
+            });
+        }
+
+        await _dbContext.SaveChangesAsync();
+
+        if (memberships.Count > 0)
+        {
+            _logger.LogInformation(
+                "Enqueued {Count} re-sync events for user {UserId} after Google email change",
+                memberships.Count, userId);
+        }
     }
 
     private async Task<CommunicationPreferencesViewModel> BuildCommunicationPreferencesViewModelAsync(Guid userId)
     {
         var prefs = await _commPrefService.GetPreferencesAsync(userId);
-        return new CommunicationPreferencesViewModel
+        var prefsByCategory = prefs.ToDictionary(p => p.Category);
+
+        // Check if user has a matched ticket order (locks ticketing preference)
+        var hasTicketOrder = await _dbContext.TicketOrders
+            .AnyAsync(o => o.MatchedUserId == userId);
+
+        var categories = new List<CategoryPreferenceItem>();
+
+        foreach (var category in MessageCategoryExtensions.ActiveCategories)
         {
-            Categories = prefs.Select(p => new CategoryPreferenceItem
+            var pref = prefsByCategory.GetValueOrDefault(category);
+            var isAlwaysOn = category.IsAlwaysOn();
+            var isTicketingLocked = category == MessageCategory.Ticketing && hasTicketOrder;
+
+            categories.Add(new CategoryPreferenceItem
             {
-                Category = p.Category,
-                DisplayName = p.Category.ToDisplayName(),
-                Description = p.Category.ToDescription(),
-                OptedOut = p.OptedOut,
-                InboxEnabled = p.InboxEnabled,
-                IsEditable = p.Category != MessageCategory.System,
-            }).ToList()
-        };
+                Category = category,
+                DisplayName = category == MessageCategory.Ticketing
+                    ? $"Ticketing — {DateTime.UtcNow.Year}"
+                    : category.ToDisplayName(),
+                Description = category.ToDescription(),
+                EmailEnabled = pref is null || !pref.OptedOut,
+                AlertEnabled = pref?.InboxEnabled ?? true,
+                EmailEditable = !isAlwaysOn && !isTicketingLocked,
+                AlertEditable = !isAlwaysOn && !isTicketingLocked,
+                Note = isTicketingLocked ? "Locked — you have a ticket order for this year" : null,
+            });
+        }
+
+        return new CommunicationPreferencesViewModel { Categories = categories };
     }
 
-    private static void PopulateCommunicationPreferenceMetadata(CommunicationPreferencesViewModel model)
-    {
-        foreach (var item in model.Categories)
-        {
-            item.DisplayName = item.Category.ToDisplayName();
-            item.Description = item.Category.ToDescription();
-            item.IsEditable = item.Category != MessageCategory.System;
-        }
-    }
 }

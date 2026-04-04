@@ -200,45 +200,7 @@
 
         <vc:shift-signups user-id="@Model.UserId" view-mode="@ShiftSignupsViewMode.Admin" display-name="@Model.DisplayName" />
 
-        <div class="card mb-4">
-            <div class="card-header">@Localizer["AdminHuman_AuditHistory"]</div>
-            @if (Model.AuditLog.Count > 0)
-            {
-                <div class="list-group list-group-flush">
-                    @foreach (var entry in Model.AuditLog)
-                    {
-                        <div class="list-group-item">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <div>
-                                    <strong>@entry.Description</strong>
-                                    <br />
-                                    <small class="text-muted">
-                                        @if (entry.IsSystemAction)
-                                        {
-                                            <span class="badge bg-info">System</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="badge bg-secondary">Admin</span>
-                                        }
-                                        @entry.ActorName
-                                    </small>
-                                </div>
-                                <small class="text-muted text-nowrap ms-2">
-                                    @entry.OccurredAt.ToDisplayDateTime()
-                                </small>
-                            </div>
-                        </div>
-                    }
-                </div>
-            }
-            else
-            {
-                <div class="card-body text-muted">
-                    @Localizer["AdminHuman_NoAuditHistory"]
-                </div>
-            }
-        </div>
+        <vc:audit-log user-id="@Model.UserId" limit="50" title="@Localizer["AdminHuman_AuditHistory"].Value" />
 
         @if (campaignGrants != null && campaignGrants.Any())
         {
@@ -316,28 +278,7 @@
         <div class="card mb-4">
             <div class="card-header">@@nobodies.team Email</div>
             <div class="card-body">
-                @if (Model.NobodiesTeamEmail is not null)
-                {
-                    <p class="mb-0">
-                        <code>@Model.NobodiesTeamEmail</code>
-                        <span class="badge bg-success ms-1">Linked</span>
-                    </p>
-                }
-                else
-                {
-                    <form asp-controller="Google" asp-action="ProvisionEmail" asp-route-id="@Model.UserId" method="post">
-                        @Html.AntiForgeryToken()
-                        <div class="input-group mb-2">
-                            <input type="text" name="emailPrefix" class="form-control form-control-sm"
-                                   placeholder="username" required />
-                            <span class="input-group-text">@@nobodies.team</span>
-                        </div>
-                        <button type="submit" class="btn btn-primary btn-sm w-100"
-                                data-confirm="Provision a new @@nobodies.team account for this human?">
-                            <i class="fa-solid fa-plus me-1"></i>Provision Email
-                        </button>
-                    </form>
-                }
+                @await Component.InvokeAsync("NobodiesEmailBadge", new { userId = Model.UserId, mode = "detail" })
             </div>
         </div>
 

@@ -164,8 +164,8 @@ builder.Services.AddAuthentication()
         };
     });
 
-// Configure Authorization
-builder.Services.AddAuthorization();
+// Configure Authorization — registers all canonical policies (see docs/authorization-inventory.md)
+builder.Services.AddHumansAuthorizationPolicies();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddTransient<Microsoft.AspNetCore.Authentication.IClaimsTransformation, RoleAssignmentClaimsTransformation>();
 
@@ -304,6 +304,7 @@ builder.Services.AddLocalization();
 builder.Services.AddControllersWithViews(options =>
     {
         options.Filters.Add<MembershipRequiredFilter>();
+        options.Filters.Add<Humans.Web.Filters.AuthorizationPillFilter>();
         options.Filters.Add<Humans.Web.Filters.GlobalExceptionFilter>();
     })
     .AddViewLocalization(LanguageViewLocationExpanderFormat.Suffix)
@@ -363,7 +364,7 @@ app.Services.GetRequiredService<HumansMetricsService>();
             assembly.GetName().Name, string.Join(", ", resourceNames));
 
         // Check satellite assemblies
-        foreach (var culture in new[] { "en", "es", "de", "it", "fr" })
+        foreach (var culture in new[] { "en", "es", "de", "it", "fr", "ca" })
         {
             try
             {

@@ -20,6 +20,7 @@ public class EmailProvisioningService : IEmailProvisioningService
     private readonly IGoogleWorkspaceUserService _workspaceUserService;
     private readonly IUserEmailService _userEmailService;
     private readonly IEmailService _emailService;
+    private readonly INotificationService _notificationService;
     private readonly IAuditLogService _auditLogService;
     private readonly ILogger<EmailProvisioningService> _logger;
 
@@ -29,6 +30,7 @@ public class EmailProvisioningService : IEmailProvisioningService
         IGoogleWorkspaceUserService workspaceUserService,
         IUserEmailService userEmailService,
         IEmailService emailService,
+        INotificationService notificationService,
         IAuditLogService auditLogService,
         ILogger<EmailProvisioningService> logger)
     {
@@ -37,6 +39,7 @@ public class EmailProvisioningService : IEmailProvisioningService
         _workspaceUserService = workspaceUserService;
         _userEmailService = userEmailService;
         _emailService = emailService;
+        _notificationService = notificationService;
         _auditLogService = auditLogService;
         _logger = logger;
     }
@@ -44,8 +47,7 @@ public class EmailProvisioningService : IEmailProvisioningService
     public async Task<EmailProvisioningResult> ProvisionNobodiesEmailAsync(
         Guid userId,
         string emailPrefix,
-        Guid provisionedByUserId,
-        string provisionedByDisplayName)
+        Guid provisionedByUserId)
     {
         var user = await _dbContext.Users
             .Include(u => u.UserEmails)
@@ -112,7 +114,7 @@ public class EmailProvisioningService : IEmailProvisioningService
                 AuditAction.WorkspaceAccountProvisioned,
                 "WorkspaceAccount", userId,
                 $"Provisioned and linked @nobodies.team account: {fullEmail}",
-                provisionedByUserId, provisionedByDisplayName);
+                provisionedByUserId);
             await _dbContext.SaveChangesAsync();
 
             // Step 4: Send credentials to the PERSONAL email captured in step 1.
@@ -121,10 +123,29 @@ public class EmailProvisioningService : IEmailProvisioningService
                 await _emailService.SendWorkspaceCredentialsAsync(
                     recoveryEmail, user.DisplayName, fullEmail, tempPassword,
                     user.PreferredLanguage);
-                return new EmailProvisioningResult(true, fullEmail, recoveryEmail);
             }
 
-            return new EmailProvisioningResult(true, fullEmail);
+            // In-app notification (best-effort)
+            try
+            {
+                await _notificationService.SendAsync(
+                    NotificationSource.WorkspaceCredentialsReady,
+                    NotificationClass.Informational,
+                    NotificationPriority.Normal,
+                    "Your @nobodies.team account is ready",
+                    [userId],
+                    body: $"Your workspace email {fullEmail} has been provisioned. Check your personal email for login credentials.",
+                    actionUrl: "/Profile",
+                    actionLabel: "View profile");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to dispatch WorkspaceCredentialsReady notification for user {UserId}", userId);
+            }
+
+            return !string.IsNullOrEmpty(recoveryEmail)
+                ? new EmailProvisioningResult(true, fullEmail, recoveryEmail)
+                : new EmailProvisioningResult(true, fullEmail);
         }
         catch (Exception ex)
         {

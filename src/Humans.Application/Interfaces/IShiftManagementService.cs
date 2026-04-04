@@ -31,9 +31,9 @@ public interface IShiftManagementService
     Task<bool> CanApproveSignupsAsync(Guid userId, Guid departmentTeamId);
 
     /// <summary>
-    /// Gets all department team IDs where the user is a coordinator.
+    /// Gets all team IDs (departments and sub-teams) where the user is a coordinator or manager.
     /// </summary>
-    Task<IReadOnlyList<Guid>> GetCoordinatorDepartmentIdsAsync(Guid userId);
+    Task<IReadOnlyList<Guid>> GetCoordinatorTeamIdsAsync(Guid userId);
 
     // === EventSettings ===
 
@@ -78,7 +78,7 @@ public interface IShiftManagementService
     /// Moves a rota to a different department (parent team).
     /// Preserves all shifts and signups. Records an audit log entry.
     /// </summary>
-    Task MoveRotaToTeamAsync(Guid rotaId, Guid targetTeamId, Guid actorUserId, string actorDisplayName);
+    Task MoveRotaToTeamAsync(Guid rotaId, Guid targetTeamId, Guid actorUserId);
 
     /// <summary>
     /// Deletes a rota. Throws if child shifts have confirmed signups.

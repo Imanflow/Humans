@@ -204,11 +204,6 @@ namespace Humans.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
-                    b.Property<string>("ActorName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
                     b.Property<Guid?>("ActorUserId")
                         .HasColumnType("uuid");
 
@@ -1538,6 +1533,9 @@ namespace Humans.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<bool>("FailedPermanently")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("LastError")
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
@@ -1973,9 +1971,7 @@ namespace Humans.Infrastructure.Migrations
                         .HasColumnType("bigint");
 
                     b.Property<bool>("IsAllDay")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false);
+                        .HasColumnType("boolean");
 
                     b.Property<int>("MaxVolunteers")
                         .HasColumnType("integer");
@@ -2232,9 +2228,7 @@ namespace Humans.Infrastructure.Migrations
                         .HasColumnType("boolean");
 
                     b.Property<bool>("IsPublicPage")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false);
+                        .HasColumnType("boolean");
 
                     b.Property<bool>("IsSensitive")
                         .HasColumnType("boolean");
@@ -2934,6 +2928,13 @@ namespace Humans.Infrastructure.Migrations
                     b.Property<string>("GoogleEmail")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
+
+                    b.Property<string>("GoogleEmailStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("Unknown");
 
                     b.Property<Guid?>("ICalToken")
                         .HasColumnType("uuid");

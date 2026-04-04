@@ -28,6 +28,7 @@ public class ProfileCardViewComponent : ViewComponent
     private readonly ITeamService _teamService;
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IMembershipCalculator _membershipCalculator;
+    private readonly ICommunicationPreferenceService _commPrefService;
 
     public ProfileCardViewComponent(
         HumansDbContext dbContext,
@@ -37,7 +38,8 @@ public class ProfileCardViewComponent : ViewComponent
         VolunteerHistoryService volunteerHistoryService,
         ITeamService teamService,
         IRoleAssignmentService roleAssignmentService,
-        IMembershipCalculator membershipCalculator)
+        IMembershipCalculator membershipCalculator,
+        ICommunicationPreferenceService commPrefService)
     {
         _dbContext = dbContext;
         _userManager = userManager;
@@ -47,6 +49,7 @@ public class ProfileCardViewComponent : ViewComponent
         _teamService = teamService;
         _roleAssignmentService = roleAssignmentService;
         _membershipCalculator = membershipCalculator;
+        _commPrefService = commPrefService;
     }
 
     public async Task<IViewComponentResult> InvokeAsync(Guid userId, ProfileCardViewMode viewMode)
@@ -96,12 +99,7 @@ public class ProfileCardViewComponent : ViewComponent
         }
         var visibleEmails = await _userEmailService.GetVisibleEmailsAsync(userId, accessLevel);
 
-        // Check if user has a @nobodies.team email (from all emails, not just visible)
-        var hasNobodiesTeamEmail = await _dbContext.UserEmails
-            .AsNoTracking()
-            .AnyAsync(ue => ue.UserId == userId
-                && ue.IsVerified
-                && EF.Functions.ILike(ue.Email, "%@nobodies.team"));
+        // nobodies.team email badge is now handled by NobodiesEmailBadgeViewComponent
 
         // Get volunteer history entries
         var volunteerHistory = profile is not null
@@ -157,7 +155,7 @@ public class ProfileCardViewComponent : ViewComponent
             EmergencyContactRelationship = canViewLegalName ? profile?.EmergencyContactRelationship : null,
             HasPendingConsents = membershipSnapshot.PendingConsentCount > 0,
             PendingConsentCount = membershipSnapshot.PendingConsentCount,
-            HasNobodiesTeamEmail = hasNobodiesTeamEmail,
+            // HasNobodiesTeamEmail resolved by NobodiesEmailBadgeViewComponent in the view
             ViewMode = viewMode,
             CanViewLegalName = canViewLegalName,
             UserEmails = visibleEmails.Select(e => new UserEmailDisplayViewModel
@@ -185,6 +183,7 @@ public class ProfileCardViewComponent : ViewComponent
             PreferredLanguage = user.PreferredLanguage,
             CanSendMessage = !isOwnProfile
                 && !visibleEmails.Any(e => e.Visibility >= ContactFieldVisibility.AllActiveProfiles)
+                && await _commPrefService.AcceptsFacilitatedMessagesAsync(userId)
         };
 
         return View(model);
